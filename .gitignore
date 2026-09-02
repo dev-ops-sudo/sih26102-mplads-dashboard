@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.local
+.venv/
+__pycache__/
+*.pyc
+postgres_data/
+redis_data/
+minio_data/
+.idea/
+.vscode/
