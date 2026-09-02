@@ -1,0 +1,117 @@
+services:
+  postgres:
+    build:
+      context: ./infra/postgres
+    environment:
+      POSTGRES_DB: mplads
+      POSTGRES_USER: mplads
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mplads-local-password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mplads -d mplads"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-mplads}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-mplads-local-secret}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        until mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-mplads} ${MINIO_ROOT_PASSWORD:-mplads-local-secret}; do sleep 2; done;
+        mc mb --ignore-existing local/mplads-evidence;
+        mc anonymous set none local/mplads-evidence;
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin-local-change-me}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./infra/keycloak/mplads-realm.json:/opt/keycloak/data/import/mplads-realm.json:ro
+
+  api:
+    build:
+      context: ./backend
+    environment:
+      MPLADS_ENVIRONMENT: local-compose
+      MPLADS_DATABASE_URL: postgresql+psycopg://mplads:${POSTGRES_PASSWORD:-mplads-local-password}@postgres:5432/mplads
+      MPLADS_REDIS_URL: redis://redis:6379/0
+      MPLADS_CELERY_ENABLED: "true"
+      MPLADS_STORAGE_BACKEND: s3
+      MPLADS_S3_ENDPOINT_URL: http://minio:9000
+      MPLADS_S3_PUBLIC_ENDPOINT_URL: http://localhost:9000
+      MPLADS_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-mplads}
+      MPLADS_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-mplads-local-secret}
+      MPLADS_S3_BUCKET: mplads-evidence
+      MPLADS_AUTH_ENABLED: ${MPLADS_AUTH_ENABLED:-false}
+      MPLADS_OIDC_ISSUER_URL: http://localhost:8080/realms/mplads
+      MPLADS_OIDC_JWKS_URL: http://keycloak:8080/realms/mplads/protocol/openid-connect/certs
+      MPLADS_OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      MPLADS_OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.4}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+
+  worker:
+    build:
+      context: ./backend
+    command: celery -A app.workers.celery_app:celery_app worker --loglevel=INFO
+    environment:
+      MPLADS_DATABASE_URL: postgresql+psycopg://mplads:${POSTGRES_PASSWORD:-mplads-local-password}@postgres:5432/mplads
+      MPLADS_REDIS_URL: redis://redis:6379/0
+      MPLADS_STORAGE_BACKEND: s3
+      MPLADS_S3_ENDPOINT_URL: http://minio:9000
+      MPLADS_S3_PUBLIC_ENDPOINT_URL: http://localhost:9000
+      MPLADS_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-mplads}
+      MPLADS_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-mplads-local-secret}
+      MPLADS_OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
