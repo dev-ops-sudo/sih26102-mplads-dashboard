@@ -1,5 +1,6 @@
 import { CheckCircle2, Clock3, IndianRupee, ShieldAlert } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "./auth/KeycloakProvider";
 import { AgencyIntelligence } from "./components/AgencyIntelligence";
 import { AlertsCenter } from "./components/AlertsCenter";
 import { AnomalyPanel } from "./components/AnomalyPanel";
@@ -37,6 +38,7 @@ function matches(values: string[], candidate: string) {
 }
 
 function App() {
+  const { logout } = useAuth();
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +95,7 @@ function App() {
   }, [filters, search, dashboardData]);
 
   if (loading) return <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", fontSize: "24px" }}>Loading dashboard...</div>;
-  if (error) return <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", color: "red", fontSize: "24px" }}>Error: {error}</div>;
+  if (error) return <div style={{ display: "flex", flexDirection: "column", height: "100vh", alignItems: "center", justifyContent: "center", gap: "1rem" }}><div style={{ color: "red", fontSize: "1.2rem" }}>Error: {error}</div><button onClick={() => logout()} style={{ padding: "0.5rem 1rem", fontSize: "1rem", cursor: "pointer", background: "#333", color: "white", border: "1px solid #555", borderRadius: "4px" }}>Clear Session & Logout</button></div>;
   if (!dashboardData?.projects?.length) return <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", fontSize: "24px" }}>No project data available.</div>;
 
   const { projects, alerts, agencies, predictions, monthlyTrend, sectorRisk, changedSinceLogin } = dashboardData;
