@@ -1,5 +1,6 @@
 import { Bell, Menu, Search, ShieldCheck, UserRound, X } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "../auth/KeycloakProvider";
 
 interface TopNavProps {
   search: string;
@@ -11,6 +12,7 @@ const navItems = ["Overview", "Projects", "Risk Intelligence", "Anomalies", "Geo
 
 export function TopNav({ search, onSearchChange, unreadAlerts }: TopNavProps) {
   const [open, setOpen] = useState(false);
+  const { logout } = useAuth();
 
   return (
     <header className="top-nav">
@@ -27,7 +29,7 @@ export function TopNav({ search, onSearchChange, unreadAlerts }: TopNavProps) {
           <input value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Search projects, districts, agencies" />
         </label>
         <button className="icon-button pulse-dot" aria-label={`${unreadAlerts} unread alerts`}><Bell size={18} /><span>{unreadAlerts}</span></button>
-        <button className="profile-button" aria-label="Officer profile"><UserRound size={18} /><span>MoSPI</span></button>
+        <button className="profile-button" aria-label="Officer profile" onClick={() => logout()}><UserRound size={18} /><span>Logout</span></button>
         <button className="mobile-menu" onClick={() => setOpen((value) => !value)} aria-label="Toggle navigation">{open ? <X size={20} /> : <Menu size={20} />}</button>
       </div>
     </header>
