@@ -1,6 +1,9 @@
 import { X } from "lucide-react";
 import type { Project } from "../types";
 import { formatDate, inrCr, riskClass } from "../utils/format";
+import { UploadEvidence } from "./UploadEvidence";
+import { useEffect, useState } from "react";
+import { api } from "../lib/api";
 
 interface ProjectDrawerProps {
   project: Project | null;
@@ -8,6 +11,23 @@ interface ProjectDrawerProps {
 }
 
 export function ProjectDrawer({ project, onClose }: ProjectDrawerProps) {
+
+  const [media, setMedia] = useState<any[]>([]);
+
+  const loadMedia = () => {
+    if (project) {
+      api.getProjectMedia(project.id).then(data => {
+        if (data && data.evidence) {
+          setMedia(data.evidence);
+        }
+      }).catch(console.error);
+    }
+  };
+
+  useEffect(() => {
+    loadMedia();
+  }, [project]);
+
   return (
     <aside className={project ? "drawer open" : "drawer"} aria-hidden={!project}>
       {project && (
@@ -56,6 +76,27 @@ export function ProjectDrawer({ project, onClose }: ProjectDrawerProps) {
               ))}
             </div>
           </div>
+          
+          <UploadEvidence projectId={project.id} onSuccess={loadMedia} />
+
+          {media.length > 0 && (
+            <div className="drawer-section">
+              <h3>Uploaded Evidence</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                {media.map((m: any, idx: number) => (
+                  <div key={idx} style={{ background: '#222', padding: '0.5rem', borderRadius: '4px' }}>
+                    <img src={m.public_url} alt="Evidence" style={{ width: '100%', height: '100px', objectFit: 'cover', borderRadius: '4px' }} />
+                    <div style={{ fontSize: '0.8rem', marginTop: '0.5rem', color: '#ccc' }}>Stage: {m.stage}</div>
+                    <div style={{ fontSize: '0.8rem', color: m.geo_match_score > 80 ? '#52c41a' : '#ff4d4f' }}>
+                      Geo-Match: {m.geo_match_score}%
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+
           <div className="drawer-section">
             <h3>Project dates</h3>
             <ul className="date-list">

@@ -48,4 +48,8 @@ export const api = {
   getAlerts: () => request<any>('/alerts'),
   acknowledgeAlert: (id: string) => request<any>(`/alerts/${id}/acknowledge`, { method: 'PATCH' }),
   queryInvestigation: (payload: any) => request<any>('/investigation/query', { method: 'POST', body: JSON.stringify(payload) }),
+  presignUpload: (payload: { project_id: string, stage: string, filename: string, content_type: string }) => 
+    request<any>('/uploads/presign', { method: 'POST', body: JSON.stringify(payload) }),
+  completeUpload: (payload: { project_id: string, stage: string, object_key: string }) => 
+    request<any>('/uploads/complete', { method: 'POST', body: JSON.stringify(payload) }),
 };
