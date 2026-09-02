@@ -1,12 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import Keycloak from 'keycloak-js';
-import { setAuthToken } from '../lib/api';
+import { keycloak } from './keycloak';
 
-const keycloak = new Keycloak({
-  url: 'http://localhost:8080',
-  realm: 'mplads',
-  clientId: 'mplads-dashboard'
-});
+
+
 
 interface AuthContextType {
   authenticated: boolean;
@@ -38,7 +34,7 @@ export const KeycloakProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     .then((auth) => {
       setAuthenticated(auth);
       setToken(keycloak.token);
-      setAuthToken(keycloak.token);
+      
       setInitialized(true);
       
       // Update token on refresh
@@ -46,7 +42,7 @@ export const KeycloakProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         keycloak.updateToken(30).then((refreshed) => {
           if (refreshed) {
             setToken(keycloak.token);
-            setAuthToken(keycloak.token);
+            
           }
         }).catch(() => {
           keycloak.login();

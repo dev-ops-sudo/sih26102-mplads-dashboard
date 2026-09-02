@@ -1,10 +1,8 @@
 const BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || '/api/v1';
 
-let authToken: string | undefined = undefined;
+import { keycloak } from '../auth/keycloak';
 
-export const setAuthToken = (token: string | undefined) => {
-  authToken = token;
-};
+
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -15,8 +13,8 @@ export class ApiError extends Error {
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
-  if (authToken) {
-    headers.set('Authorization', `Bearer ${authToken}`);
+  if (keycloak.token) {
+    headers.set('Authorization', `Bearer ${keycloak.token}`);
   }
   if (!headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
